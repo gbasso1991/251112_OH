@@ -63,10 +63,10 @@ un_solo_fondo=1
 resto_fondo=1
 templog = 1
 N_espiras_bob_captora=1
-nombre='*LB100OH*'
+nombre='*LB97OH'
 Analisis_de_Fourier = 1 # sobre las señales, imprime espectro de señal muestra
 N_armonicos_impares = 7
-concentracion =(2.0)*1e3 #[concentracion]= g/m^3 (1 g/l == 1e3 g/m^3) (Default = 10000 g/m^3)
+concentracion =(4.09)*1e3 #[concentracion]= g/m^3 (1 g/l == 1e3 g/m^3) (Default = 10000 g/m^3)
 capsula_glucosa=0   # capsula para solventes organicos
 detector_ciclos_descartables=True #en funcion a Mag max para evitar guardar/promediar con ciclos in/out
 Ciclo_promedio=1
@@ -785,10 +785,32 @@ SAR_area=[SAR_area[i] for i in indices_to_stay]
     
 
 Tau=[Tau[i]*1e9 for i in indices_to_stay] #paso a ns
-xi_M_0=[xi_M_0[i] for i in indices_to_stay]
+xi_M_0=[xi_M_0[i] for i in indices_to_stay] 
 # cociente_f1_f0=[cociente_f1_f0[i] for i in indices_to_stay]
 # cociente_f2_f0=[cociente_f2_f0[i] for i in indices_to_stay]
 long_arrays=[long_arrays[i] for i in indices_to_stay]
+#%% SALVO CICLO PARTICULAR PARA COMPARAR DESPUES
+
+# Exporto ciclos promedio en ASCII, primero en V.s, despues en A/m :
+# | Tiempo (s) | Campo (V.s) | Magnetizacion (V.s) | Campo (A/m) |  Magnetizacion (A/m)
+# '''
+ciclo_out = Table([t_prom,H_prom_ua/1e3,M_prom_ua,H_prom/1e3,M_prom])
+
+encabezado = ['Tiempo_(s)','Campo_(V.s)', 'Magnetizacion_(V.s)','Campo_(kA/m)', 'Magnetizacion_(A/m)']
+formato = {'Tiempo_(s)':'%e' ,'Campo_(V.s)':'%e','Magnetizacion_(V.s)':'%e','Campo_(kA/m)':'%e','Magnetizacion_(A/m)':'%e'}
+
+
+ciclo_out.meta['comments'] = [f'Temperatura_=_{np.mean(temp_m)}',
+                                f'Concentracion g/m^3_=_{concentracion}',
+                                f'C_Vs_to_Am_M_A/Vsm_=_{C_Vs_to_Am_magnetizacion}',
+                                f'pendiente_HvsI_1/m_=_{pendiente_HvsI}',
+                                f'ordenada_HvsI_A/m_=_{ordenada_HvsI}',
+                                f'frecuencia_Hz_=_{frec_final_m}',
+                                f'Promedio de {Num_ciclos_m} ciclos\n']
+
+output_file = os.path.join(output_dir, os.path.commonprefix(list(fnames_m)) + '_ciclo_promedio_H_M.txt')# Especificar la ruta completa del archivo de salida
+ascii.write(ciclo_out,output_file,names=encabezado,overwrite=True,delimiter='\t',formats=formato)
+
 #%% CICLO PROMEDIO
 if Ciclo_promedio:
     min_len_t = min([len(f) for f in Ciclos_tiempo])
@@ -1019,11 +1041,8 @@ else:
 
 #%% tau/SAR vs Temperatura or tau/SAR vs indx
 if templog:
-    # Definir el mapa de colores ('viridis' en este caso)
     cmap = mpl.colormaps['viridis'] 
-    # Normalizar las temperaturas al rango [0, 1] para obtener colores
     normalized_temperaturas = (np.array(temp_m) - np.array(temp_m).min()) / (np.array(temp_m).max() - np.array(temp_m).min())
-    # Obtener los colores correspondientes a las temperaturas normalizadas
     colors = cmap(normalized_temperaturas)
 
     fig, ax = plt.subplots(2, 1, figsize=(10,5), constrained_layout=True,sharex=True)
@@ -1115,13 +1134,12 @@ if templog:
     ax[2].scatter(time_m, Remanencia_Am,c=colors, marker='D',label='M$_R$ = '+f'{Remanencia_all:.0f} A/m')
     ax[2].plot(time_m, Remanencia_Am,zorder=-1)
     ax[2].set_ylabel('Magnetizacion Remanente')
-    ax[2].set_xlabel('t (s)')
 
     ax[3].scatter(time_m, Mag_max,c=colors,marker='v',label='M$_{max}$ = '+f'{Mag_max_all:.0f} A/m')
     ax[3].plot(time_m,Mag_max,zorder=-1)
 
     ax[3].set_ylabel('Mag Máxima')
-    ax[3].set_xlabel('indx')
+    ax[3].set_xlabel('t (s)')
     
     for a in ax:
         # a.axvspan(tiempo_interpolado[indx_TF_interp[0][0]],tiempo_interpolado[indx_TF_interp[0][-1]],color='tab:red',alpha=0.5,label=f'T Fase: {t_tf} s',zorder=-2)
@@ -1130,8 +1148,26 @@ if templog:
         
     ax[0].set_title(f'\n{nombre.strip("*")} - {frec_nombre[0]/1000:>3.0f} kHz - {round(np.mean(Campo_maximo)/1e3):>4.1f} kA/m')
     plt.suptitle(r'H$_C$ - M$_R$ - $\chi_{M=0}$',fontsize=15)
-    plt.savefig(os.path.join(output_dir,os.path.commonprefix(list(fnames_m))+'_Hc_Mr_xi_vs_T.png'),dpi=300,facecolor='w')
+    plt.savefig(os.path.join(output_dir,os.path.commonprefix(list(fnames_m))+'_Hc_Mr_xi_vs_t.png'),dpi=300,facecolor='w')
     plt.show()
+
+    #% agrego plot del Hc vs T
+
+    fig4, ax = plt.subplots(1, 1, figsize=(9,3), constrained_layout=True,sharex=True)
+    ax.scatter(temp_m,Coercitividad_kAm,c=colors, marker='o',label='H$_C$')
+    ax.plot(temp_m,Coercitividad_kAm,zorder=-1)
+    ax.set_ylabel('Campo Coercitivo (kA/m)')
+
+     
+    # a.axvspan(temperatura_interpolada[indx_TF_interp],temperatura_interpolada[indx_TF_interp[-1]],color='tab:red',alpha=0.4,label=f'T Fase: {t_tf} s',zorder=-2)
+    ax.legend(ncol=2)
+    ax.grid()
+
+    #ax.set_title(f'\n{nombre.strip("*")} - {frec_nombre[0]/1000:>3.0f} kHz - {round(np.mean(Campo_maximo)/1e3):>4.1f} kA/m')
+    ax.set_xlabel('T (°C)')
+    plt.suptitle(r'H$_C$ vs T',fontsize=15)
+    plt.savefig(os.path.join(output_dir,os.path.commonprefix(list(fnames_m))+'_Hc_vs_T.png'),dpi=300,facecolor='w')
+
 
 else:
     # Tau, SAR
