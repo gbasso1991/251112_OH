@@ -657,32 +657,37 @@ for k in range(len(fnames_m)):
     Remanencia_Am.append(Mr_mean)                   #Magnetizacion remanente en kA/m
     xi_M_0.append(susc_a_M_0)                       #Sin unidades
 
-    # #% EXPORTO CICLOS HM
-    # '''
-    # Exporto ciclos de histeresis en ASCII, primero en V.s, despues en A/m :
-    # | Tiempo (s) | Campo (V.s) | Magnetizacion (V.s) | Campo (A/m) |  Magnetizacion (A/m)
-    # '''
-    # col0 = t_f_m - t_f_m[0]
-    # col1 = campo_ua_m
-    # col2 = magnetizacion_ua_m
-    # col3 = campo_m/1000 #kA/m
-    # col4 = magnetizacion_m_filtrada#A/m
+    #% EXPORTO CICLOS HM
+    if k!=len(fnames_m):
+        try:  
+            '''
+            Exporto ciclos de histeresis en ASCII, primero en V.s, despues en A/m :
+            | Tiempo (s) | Campo (V.s) | Magnetizacion (V.s) | Campo (A/m) |  Magnetizacion (A/m)
+            '''
+            col0 = t_f_m - t_f_m[0]
+            col1 = campo_ua_m
+            col2 = magnetizacion_ua_m
+            col3 = campo_m/1000 #kA/m
+            col4 = magnetizacion_m_filtrada#A/m
 
-    # ciclo_out = Table([col0, col1, col2,col3,col4])
+            ciclo_out = Table([col0, col1, col2,col3,col4])
 
-    # encabezado = ['Tiempo_(s)','Campo_(V.s)', 'Magnetizacion_(V.s)','Campo_(kA/m)', 'Magnetizacion_(A/m)']
-    # formato = {'Tiempo_(s)':'%e' ,'Campo_(V.s)':'%e','Magnetizacion_(V.s)':'%e','Campo_(kA/m)':'%e','Magnetizacion_(A/m)':'%e'}
+            encabezado = ['Tiempo_(s)','Campo_(V.s)', 'Magnetizacion_(V.s)','Campo_(kA/m)', 'Magnetizacion_(A/m)']
+            formato = {'Tiempo_(s)':'%e' ,'Campo_(V.s)':'%e','Magnetizacion_(V.s)':'%e','Campo_(kA/m)':'%e','Magnetizacion_(A/m)':'%e'}
 
-    # ciclo_out.meta['comments'] = [f'Temperatura_=_{temp_m[k]}',
-    #                               f'Concentracion g/m^3_=_{concentracion}',
-    #                               f'C_Vs_to_Am_M_A/Vsm_=_{C_Vs_to_Am_magnetizacion}',
-    #                               f'pendiente_HvsI_1/m_=_{pendiente_HvsI}',
-    #                               f'ordenada_HvsI_A/m_=_{ordenada_HvsI}',
-    #                               f'frecuencia_Hz_=_{frec_final_m}\n']
+            ciclo_out.meta['comments'] = [f'Temperatura_=_{temp_m[k]}',
+                                        f'Concentracion g/m^3_=_{concentracion}',
+                                        f'C_Vs_to_Am_M_A/Vsm_=_{C_Vs_to_Am_magnetizacion}',
+                                        f'pendiente_HvsI_1/m_=_{pendiente_HvsI}',
+                                        f'ordenada_HvsI_A/m_=_{ordenada_HvsI}',
+                                        f'frecuencia_Hz_=_{frec_final_m}\n']
 
-    # output_file = os.path.join(output_dir, fnames_m[k][:-4] + '_ciclo_H_M.txt')
-    # ascii.write(ciclo_out,output_file,names=encabezado,overwrite=True,delimiter='\t',formats=formato)
+            output_file = os.path.join(output_dir_ciclos, fnames_m[k][:-4] + '_ciclo_H_M.txt')
 
+            ascii.write(ciclo_out,output_file,names=encabezado,overwrite=True,delimiter='\t',formats=formato)
+        except IndexError:
+            print(f'IndxError en la exportacion de {fnames_m[k]}')
+            pass
     plt.close('all')
 #%% DETECTOR CICLOS DESCARTABLES
 fnames_m=np.array(fnames_m)
@@ -791,25 +796,25 @@ xi_M_0=[xi_M_0[i] for i in indices_to_stay]
 long_arrays=[long_arrays[i] for i in indices_to_stay]
 #%% SALVO CICLO PARTICULAR PARA COMPARAR DESPUES
 
-# Exporto ciclos promedio en ASCII, primero en V.s, despues en A/m :
-# | Tiempo (s) | Campo (V.s) | Magnetizacion (V.s) | Campo (A/m) |  Magnetizacion (A/m)
-# '''
-ciclo_out = Table([t_prom,H_prom_ua/1e3,M_prom_ua,H_prom/1e3,M_prom])
+# # Exporto ciclos promedio en ASCII, primero en V.s, despues en A/m :
+# # | Tiempo (s) | Campo (V.s) | Magnetizacion (V.s) | Campo (A/m) |  Magnetizacion (A/m)
+# # '''
+# ciclo_out = Table([t_prom,H_prom_ua/1e3,M_prom_ua,H_prom/1e3,M_prom])
 
-encabezado = ['Tiempo_(s)','Campo_(V.s)', 'Magnetizacion_(V.s)','Campo_(kA/m)', 'Magnetizacion_(A/m)']
-formato = {'Tiempo_(s)':'%e' ,'Campo_(V.s)':'%e','Magnetizacion_(V.s)':'%e','Campo_(kA/m)':'%e','Magnetizacion_(A/m)':'%e'}
+# encabezado = ['Tiempo_(s)','Campo_(V.s)', 'Magnetizacion_(V.s)','Campo_(kA/m)', 'Magnetizacion_(A/m)']
+# formato = {'Tiempo_(s)':'%e' ,'Campo_(V.s)':'%e','Magnetizacion_(V.s)':'%e','Campo_(kA/m)':'%e','Magnetizacion_(A/m)':'%e'}
 
 
-ciclo_out.meta['comments'] = [f'Temperatura_=_{np.mean(temp_m)}',
-                                f'Concentracion g/m^3_=_{concentracion}',
-                                f'C_Vs_to_Am_M_A/Vsm_=_{C_Vs_to_Am_magnetizacion}',
-                                f'pendiente_HvsI_1/m_=_{pendiente_HvsI}',
-                                f'ordenada_HvsI_A/m_=_{ordenada_HvsI}',
-                                f'frecuencia_Hz_=_{frec_final_m}',
-                                f'Promedio de {Num_ciclos_m} ciclos\n']
+# ciclo_out.meta['comments'] = [f'Temperatura_=_{np.mean(temp_m)}',
+#                                 f'Concentracion g/m^3_=_{concentracion}',
+#                                 f'C_Vs_to_Am_M_A/Vsm_=_{C_Vs_to_Am_magnetizacion}',
+#                                 f'pendiente_HvsI_1/m_=_{pendiente_HvsI}',
+#                                 f'ordenada_HvsI_A/m_=_{ordenada_HvsI}',
+#                                 f'frecuencia_Hz_=_{frec_final_m}',
+#                                 f'Promedio de {Num_ciclos_m} ciclos\n']
 
-output_file = os.path.join(output_dir, os.path.commonprefix(list(fnames_m)) + '_ciclo_promedio_H_M.txt')# Especificar la ruta completa del archivo de salida
-ascii.write(ciclo_out,output_file,names=encabezado,overwrite=True,delimiter='\t',formats=formato)
+# output_file = os.path.join(output_dir, os.path.commonprefix(list(fnames_m)) + '_ciclo_promedio_H_M.txt')# Especificar la ruta completa del archivo de salida
+# ascii.write(ciclo_out,output_file,names=encabezado,overwrite=True,delimiter='\t',formats=formato)
 
 #%% CICLO PROMEDIO
 if Ciclo_promedio:

@@ -237,7 +237,7 @@ def lector_ciclos(filepath):
     M_Am  = pd.Series(data['Magnetizacion_(A/m)']).to_numpy(dtype=float)#A/m
 
     return t,H_Vs,M_Vs,H_kAm,M_Am,metadata
-#%% Ejemplo
+#%% Clase ResultadosESAR
 class ResultadosESAR:
     def __init__(self, meta, files, time, temperatura, Mr, Hc, campo_max, mag_max,
                  xi_M_0, frecuencia_fund, magnitud_fund, dphi_fem, SAR, tau, N):
@@ -257,80 +257,141 @@ class ResultadosESAR:
         self.tau = tau
         self.N = N
 
-class CicloESAR:
-    def __init__(self, t, H_Vs, M_Vs, H_A_m, M_A_m, metadata):
-        self.t = t
-        self.H_Vs = H_Vs
-        self.M_Vs = M_Vs
-        self.H_A_m = H_A_m
-        self.M_A_m = M_A_m
-        self.metadata = metadata
+#%% Implementación
+#%% Implementación
+dir_raiz_ejemplo = "LB97OH"
 
-    def plot(self):
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(6,4))
-        plt.plot(self.H_A_m, self.M_A_m)
-        plt.xlabel("H (A/m)")
-        plt.ylabel("M (A/m)")
-        plt.title(self.metadata["filename"])
-        plt.grid()
-        plt.show()
+dir_RT = glob(os.path.join(dir_raiz_ejemplo, '**', '*_RT','**','Analisis*'), recursive=True)
+dir_no_RT = glob(os.path.join(dir_raiz_ejemplo, '**', 'Analisis*'), recursive=True)
+dir_no_RT = [d for d in dir_no_RT if '_RT' not in d and d not in dir_RT]
+print(f"Analisis en RT: {len(dir_RT)}")
+print(f"Analisis NO en RT: {len(dir_no_RT)}")
 
-class MedidaESAR:
-    def __init__(self, directorio):
-        self.directorio = directorio
-        self.resultados = None
-        self.ciclos = []
+# Lista para almacenar todos los resultados
+resultados_RT = []
 
-        self._cargar_resultados()
-        self._cargar_ciclos()
+for d in dir_RT:
+    print(f"\nProcesando directorio RT: {d}")
+    
+    # Buscar archivo resultados.txt en este directorio
+    archivos_resultados = glob(os.path.join(d, '*resultados.txt'))
+    
+    if not archivos_resultados:
+        print(f"  No se encontró archivo resultados.txt en {d}")
+        continue
+    
+    for archivo_resultados in archivos_resultados:
+        print(f"  Procesando archivo: {os.path.basename(archivo_resultados)}")
+        
+        try:
+            # Usar tu función lector_resultados para leer el archivo
+            meta, files, time, temperatura, Mr, Hc, campo_max, mag_max, xi_M_0, frecuencia_fund, magnitud_fund, dphi_fem, SAR, tau, N = lector_resultados(archivo_resultados)
+            
+            # Crear instancia de la clase ResultadosESAR
+            resultado = ResultadosESAR(
+                meta=meta,
+                files=files,
+                time=time-time[0],
+                temperatura=temperatura,
+                Mr=Mr,
+                Hc=Hc,
+                campo_max=campo_max,
+                mag_max=mag_max,
+                xi_M_0=xi_M_0,
+                frecuencia_fund=frecuencia_fund,
+                magnitud_fund=magnitud_fund,
+                dphi_fem=dphi_fem,
+                SAR=SAR,
+                tau=tau,
+                N=N)
+            
+            # Guardar en la lista
+            resultados_RT.append(resultado)
+            
+            # Mostrar información básica
+            print(f"    ✓ Archivo procesado exitosamente")
+            print(f"    - Nombre del archivo: {meta.get('Archivo_datos', 'N/A')}")
+            print(f"    - Número de mediciones: {len(files)}")
+            print(f"    - Rango de temperatura: {resultado.temperatura.min():.1f}°C - {resultado.temperatura.max():.1f}°C")
+            print(f"    - Hc promedio: {resultado.Hc.mean():.2f} kA/m")
+            print(f"    - SAR promedio: {resultado.SAR.mean():.2f} W/g")
+            
+        except Exception as e:
+            print(f"  ✗ Error procesando {archivo_resultados}: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
-    def _cargar_resultados(self):
-        resultados_path = glob(os.path.join(self.directorio, "*resultados*.txt"))
-        if not resultados_path:
-            print("No se encontró archivo de resultados")
-            return
-        meta, files, time, temperatura, Mr, Hc, campo_max, mag_max, \
-            xi_M_0, frecuencia_fund, magnitud_fund, dphi_fem, SAR, tau, N = \
-                lector_resultados(resultados_path[0])
+print(f"\nResumen final:")
+print(f"Directorios RT procesados: {len(dir_RT)}")
+print(f"Resultados ESAR cargados: {len(resultados_RT)}")
 
-        self.resultados = ResultadosESAR(meta, files, time, temperatura, Mr, Hc,
-                                         campo_max, mag_max, xi_M_0,
-                                         frecuencia_fund, magnitud_fund,
-                                         dphi_fem, SAR, tau, N)
 
-    def _cargar_ciclos(self):
-        ciclos_paths = glob(os.path.join(self.directorio, "*ciclo*.txt"))
-        for c in ciclos_paths:
-            try:
-                t, H_Vs, M_Vs, H_A_m, M_A_m, meta = lector_ciclos(c)
-                self.ciclos.append(CicloESAR(t, H_Vs, M_Vs, H_A_m, M_A_m, meta))
-            except Exception as e:
-                print(f"Error cargando ciclo {c}: {e}")
-
-    def plot_ciclos(self):
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(8,6))
-        for ciclo in self.ciclos:
-            plt.plot(ciclo.H_A_m, ciclo.M_A_m, alpha=0.6)
-        plt.grid()
-        plt.xlabel("H (A/m)")
-        plt.ylabel("M (A/m)")
-        plt.title(f"Ciclos del directorio {os.path.basename(self.directorio)}")
-        plt.show()
-
+plt.plot(resultados_RT[0].time,resultados_RT[0].temperatura, label='RT')
 #%%
+# Lista para almacenar todos los resultados NO RT
+resultados_no_RT = []
+
+for d in dir_no_RT:
+    print(f"\nProcesando directorio NO RT: {d}")
+    # Buscar archivo resultados.txt en este directorio
+    archivos_resultados = glob(os.path.join(d, '*resultados.txt'))
+    
+    if not archivos_resultados:
+        print(f"  No se encontró archivo resultados.txt en {d}")
+        continue
+    
+    for archivo_resultados in archivos_resultados:
+        print(f"  Procesando archivo: {os.path.basename(archivo_resultados)}")
+        try:
+            # Usar tu función lector_resultados para leer el archivo
+            meta, files, time, temperatura, Mr, Hc, campo_max, mag_max, xi_M_0, frecuencia_fund, magnitud_fund, dphi_fem, SAR, tau, N = lector_resultados(archivo_resultados)
+            
+            # Crear instancia de la clase ResultadosESAR
+            resultado = ResultadosESAR(
+                meta=meta,
+                files=files,
+                time=time-time[0],
+                temperatura=temperatura,
+                Mr=Mr,
+                Hc=Hc,
+                campo_max=campo_max,
+                mag_max=mag_max,
+                xi_M_0=xi_M_0,
+                frecuencia_fund=frecuencia_fund,
+                magnitud_fund=magnitud_fund,
+                dphi_fem=dphi_fem,
+                SAR=SAR,
+                tau=tau,
+                N=N)
+            
+            # Guardar en la lista
+            resultados_no_RT.append(resultado)
+            
+            # Mostrar información básica
+            print(f"    ✓ Archivo procesado exitosamente")
+            print(f"    - Nombre del archivo: {meta.get('Archivo_datos', 'N/A')}")
+            print(f"    - Número de mediciones: {len(files)}")
+            print(f"    - Rango de temperatura: {resultado.temperatura.min():.1f}°C - {resultado.temperatura.max():.1f}°C")
+            print(f"    - Hc promedio: {resultado.Hc.mean():.2f} kA/m")
+            print(f"    - SAR promedio: {resultado.SAR.mean():.2f} W/g")
+            
+        except Exception as e:
+            print(f"  ✗ Error procesando {archivo_resultados}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+print(f"\nResumen final:")
+print(f"Resultados RT cargados: {len(resultados_RT)}")
+print(f"Resultados NO RT cargados: {len(resultados_no_RT)}")
+#%%
+fig,ax = plt.subplots(figsize=(8,6),constrained_layout=True)
 
 
-m = MedidaESAR("251112_111451_Pmag")
+for res in resultados_no_RT:
+    ax.plot(res.time,res.temperatura,label='No RT')
 
-# Datos
-print(m.resultados.meta)
-print(m.resultados.SAR)
+ax.grid()
+ax.set_xlabel('Tiempo (s)')
+ax.set_ylabel('Temperatura (°C)')
 
-# Gráficos
-m.plot_ciclos()
-
-# Revisar un ciclo particular
-m.ciclos[0].plot()
 
