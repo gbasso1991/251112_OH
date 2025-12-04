@@ -238,6 +238,7 @@ def lector_ciclos(filepath):
 
     return t,H_Vs,M_Vs,H_kAm,M_Am,metadata
 #%% Clase ResultadosESAR
+#%% Clase ResultadosESAR
 class ResultadosESAR:
     def __init__(self, meta, files, time, temperatura, Mr, Hc, campo_max, mag_max,
                  xi_M_0, frecuencia_fund, magnitud_fund, dphi_fem, SAR, tau, N):
@@ -256,8 +257,66 @@ class ResultadosESAR:
         self.SAR = SAR
         self.tau = tau
         self.N = N
+        
+        # Atributos para los ciclos
+        self.primer_ciclo = None
+        self.ultimo_ciclo = None
+        self.primer_ciclo_metadata = None
+        self.ultimo_ciclo_metadata = None
+        
+    def cargar_ciclos_extremos(self, directorio_base):
+        """Carga el primer y último ciclo desde el subdirectorio ciclos_H_M"""
+        # Determinar el directorio de ciclos
+        directorio_ciclos = os.path.join(directorio_base, 'ciclos_H_M')
+        
+        if not os.path.exists(directorio_ciclos):
+            print(f"Directorio de ciclos no encontrado: {directorio_ciclos}")
+            return False
+        
+        # Obtener nombres del primer y último archivo de datos
+        if len(self.files) == 0:
+            print("No hay archivos de datos registrados")
+            return False
+        
+        # Extraer nombres base (sin extensión .txt)
+        primer_archivo_base = os.path.splitext(self.files[0])[0]  # Ej: '135kHz_100dA_100Mss_bobN1LB97OH0008'
+        ultimo_archivo_base = os.path.splitext(self.files[-1])[0]  # Ej: '135kHz_100dA_100Mss_bobN1LB97OH0700'
+        
+        # Construir nombres de archivos de ciclos
+        primer_ciclo_nombre = f"{primer_archivo_base}_ciclo_H_M.txt"
+        ultimo_ciclo_nombre = f"{ultimo_archivo_base}_ciclo_H_M.txt"
+        
+        primer_ciclo_path = os.path.join(directorio_ciclos, primer_ciclo_nombre)
+        ultimo_ciclo_path = os.path.join(directorio_ciclos, ultimo_ciclo_nombre)
+        
+        # Cargar primer ciclo
+        if os.path.exists(primer_ciclo_path):
+            try:
+                t1, H_Vs1, M_Vs1, H_kAm1, M_Am1, meta1 = lector_ciclos(primer_ciclo_path)
+                self.primer_ciclo = (H_kAm1, M_Am1)
+                self.primer_ciclo_metadata = meta1
+                print(f"  ✓ Primer ciclo cargado: {primer_ciclo_nombre}")
+                print(f"    Temperatura: {meta1['Temperatura']}°C")
+            except Exception as e:
+                print(f"  ✗ Error cargando primer ciclo: {e}")
+        else:
+            print(f"  ✗ No se encontró primer ciclo: {primer_ciclo_path}")
+        
+        # Cargar último ciclo
+        if os.path.exists(ultimo_ciclo_path):
+            try:
+                t2, H_Vs2, M_Vs2, H_kAm2, M_Am2, meta2 = lector_ciclos(ultimo_ciclo_path)
+                self.ultimo_ciclo = (H_kAm2, M_Am2)
+                self.ultimo_ciclo_metadata = meta2
+                print(f"  ✓ Último ciclo cargado: {ultimo_ciclo_nombre}")
+                print(f"    Temperatura: {meta2['Temperatura']}°C")
+            except Exception as e:
+                print(f"  ✗ Error cargando último ciclo: {e}")
+        else:
+            print(f"  ✗ No se encontró último ciclo: {ultimo_ciclo_path}")
+        
+        return True
 
-#%% Implementación
 #%% Implementación
 dir_raiz_ejemplo = "LB97OH"
 
@@ -326,7 +385,7 @@ print(f"Directorios RT procesados: {len(dir_RT)}")
 print(f"Resultados ESAR cargados: {len(resultados_RT)}")
 
 
-plt.plot(resultados_RT[0].time,resultados_RT[0].temperatura, label='RT')
+plt.plot(resultados_RT[0].time,resultados_RT[0].temperatura,'o-' ,label='RT')
 #%%
 # Lista para almacenar todos los resultados NO RT
 resultados_no_RT = []
@@ -383,15 +442,58 @@ for d in dir_no_RT:
 print(f"\nResumen final:")
 print(f"Resultados RT cargados: {len(resultados_RT)}")
 print(f"Resultados NO RT cargados: {len(resultados_no_RT)}")
-#%%
+#%% Templog
 fig,ax = plt.subplots(figsize=(8,6),constrained_layout=True)
-
-
 for res in resultados_no_RT:
     ax.plot(res.time,res.temperatura,label='No RT')
-
 ax.grid()
 ax.set_xlabel('Tiempo (s)')
 ax.set_ylabel('Temperatura (°C)')
+#% SAR
+fig2,ax2 = plt.subplots(figsize=(8,5),constrained_layout=True)
+for res in resultados_no_RT:
+    ax2.plot(res.temperatura,res.SAR,'o-',label='No RT')
+for res in resultados_RT:
+    ax2.plot(res.temperatura,res.SAR,'o-',label='RT')
+ax2.grid()
+ax2.set_xlabel('Temperatura (°C)')
+ax2.set_ylabel('SAR (W/g)')
+ax2.legend()
+ax2.set_title('Comparación SAR RT vs No RT')
+#% Hc
+fig3,ax3 = plt.subplots(figsize=(8,5),constrained_layout=True)
+for res in resultados_no_RT:
+    ax3.plot(res.temperatura,res.Hc,'o-',label='No RT')
+for res in resultados_RT:
+    ax3.plot(res.temperatura,res.Hc,'o-',label='RT')
+ax3.grid()
+ax3.set_xlabel('Temperatura (°C)')
+ax3.set_ylabel('Hc (kA/m)')
+ax3.legend()
+ax3.set_title('Comparación Hc RT vs No RT')
+# %Tau    
+fig4,ax4 = plt.subplots(figsize=(8,5),constrained_layout=True)
+for res in resultados_no_RT:
+    ax4.plot(res.temperatura,res.tau,'o-',label='No RT')
+for res in resultados_RT:
+    ax4.plot(res.temperatura,res.tau,'o-',label='RT')
+ax4.grid()
+ax4.set_xlabel('Temperatura (°C)')
+ax4.set_ylabel('Tau (s)')
+ax4.legend()
+ax4.set_title('Comparación Tau RT vs No RT')
+#% Mr  
+fig5,ax5 = plt.subplots(figsize=(8,5),constrained_layout=True)
+for res in resultados_no_RT:
+    ax5.plot(res.temperatura,res.Mr,'o-',label='No RT')
+for res in resultados_RT:
+    ax5.plot(res.temperatura,res.Mr,'o-',label='RT')
+ax5.grid()
+ax5.set_xlabel('Temperatura (°C)')
+ax5.set_ylabel('Mr (A/m)')
+ax5.legend()
+ax5.set_title('Comparación Remanaencia RT vs No RT')
+#%%
 
 
+# %%
